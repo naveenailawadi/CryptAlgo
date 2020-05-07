@@ -1,10 +1,9 @@
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceWithdrawException
 from binance.enums import *
+from secrets import KEY, SECRET
 
 # initialize api
-KEY = 'nqoE8NVAPkEVX26miyXMB3AEtxAfMWY1QZbKusWxv5utKvIvg542c8z3CE5FhK52'
-SECRET = 'RKl6AOL0Vr5P2rCnpNmaTggk98P8yv3YO3pDtgCALrp8FK26RlDxMW4PWNt8O8mG'
 client = Client(KEY, SECRET)
 
 # load constants
