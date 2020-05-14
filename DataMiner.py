@@ -1,4 +1,5 @@
 from binance.client import Client
+from secrets import KEY, SECRET
 import pandas as pd
 import ta  # keep this here --> it is how you will get technical indicators for the dataset
 
@@ -30,7 +31,7 @@ class Miner:
         self.headers = ["Timestamp", "Open", "High", "Low", "Close", "Volume",
                         "Quote Asset Volume", "Number of Trades", "Taker Buy Asset Volume", "Taker Quote Asset Volume"]
         self.raw_csv = raw_csv
-        self.client = Client()
+        self.client = Client(KEY, SECRET)
 
     # this function automatically adds everything
     def add(self, records):
@@ -77,6 +78,24 @@ class Miner:
         records = [Record(kline) for kline in klines]
 
         self.add(records)
+
+    # create a function to fill in blanks
+    def fill_blanks(self, output_csv):
+        # check if the previous record corresponds with the next record (should be 60s apart --> 70s --> problem)
+        old_df = pd.read_csv(self.raw_csv, header=0)
+
+        timestamps = old_df['Timestamp']
+
+        old = timestamps[0]
+        for time in timestamps[1:]:
+            # check difference
+            difference = old - time
+            if difference != 60000:
+                # need to add data and sleep for appropriate amount --> get the amount of time (in ms)
+                necessary_records = difference / 60000
+
+            # set the current time to the old variable
+            old = time
 
     def raw_size(self):
         raw_df = pd.read_csv(self.raw_csv, header=0)
