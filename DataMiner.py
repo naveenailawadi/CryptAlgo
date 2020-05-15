@@ -2,6 +2,7 @@ from binance.client import Client
 from secrets import KEY, SECRET
 import pandas as pd
 import ta  # keep this here --> it is how you will get technical indicators for the dataset
+import time
 
 # load constants
 PERIOD = 5
@@ -24,6 +25,9 @@ class Record:
         self.taker_buy_base_asset_volume = float(info_list[9])
         self.taker_quote_asset_volume = float(info_list[10])
 
+    def __repr__(self):
+        return f"{self.close} at {self.timestamp}"
+
 
 # create a general mining class
 class Miner:
@@ -40,10 +44,11 @@ class Miner:
 
         new_df = pd.DataFrame(formatted_records, columns=self.headers)
 
-        # add the new df to the old one
+        # add the new df to the old one and sort it by timestamp
         try:
             raw_df = pd.read_csv(self.raw_csv, header=0)
             raw_df = raw_df.append(new_df, ignore_index=True).drop_duplicates(keep='first', subset=['Timestamp'])
+            raw_df = raw_df.sort_values(by=['Timestamp'])
         except FileNotFoundError:
             raw_df = new_df
             print(f"{self.raw_csv} was not found. A new file has been created")
@@ -80,22 +85,41 @@ class Miner:
         self.add(records)
 
     # create a function to fill in blanks
-    def fill_blanks(self, output_csv):
+    def fill_blanks(self, ticker):
         # check if the previous record corresponds with the next record (should be 60s apart --> 70s --> problem)
         old_df = pd.read_csv(self.raw_csv, header=0)
+        # headers = old_df.columns
 
         timestamps = old_df['Timestamp']
 
         old = timestamps[0]
-        for time in timestamps[1:]:
+        for timestamp in timestamps[1:]:
             # check difference
-            difference = old - time
+            difference = old - timestamp
             if difference != 60000:
                 # need to add data and sleep for appropriate amount --> get the amount of time (in ms)
-                necessary_records = difference / 60000
+                # necessary_records = difference / 60000
+
+                # set a start and end time
+
+                # get current time in miliseconds
+                now = time.time() * 1000
+                start_time = f"{int((old - now) / (1000 * 60)) + 1} minutes ago UTC"
+                end_time = f"{int((timestamp - now) / (1000 * 60)) + 1} minutes ago UTC"
+
+                # request data from a generator for this many minutes
+                new_records = []
+                for new_slice in self.client.get_historical_klines_generator(ticker, Client.KLINE_INTERVAL_1MINUTE, start_time, end_time):
+                    new_record = Record(new_slice)
+                    new_records.append(new_record)
+                    print(f"{new_record} added")
+                    time.sleep(0.1)
+
+                # append the current df, drop duplicates (based on timestamp), sort it
+                self.add(new_records)
 
             # set the current time to the old variable
-            old = time
+            old = timestamp
 
     def raw_size(self):
         raw_df = pd.read_csv(self.raw_csv, header=0)
