@@ -104,19 +104,17 @@ class Miner:
 
                 # get current time in miliseconds
                 now = time.time() * 1000
-                start_time = f"{int((old - now) / (1000 * 60)) + 1} minutes ago UTC"
+                start_time = f"{int((old - now) / (1000 * 60)) - 1} minutes ago UTC"
                 end_time = f"{int((timestamp - now) / (1000 * 60)) + 1} minutes ago UTC"
 
                 # request data from a generator for this many minutes
-                new_records = []
                 for new_slice in self.client.get_historical_klines_generator(ticker, Client.KLINE_INTERVAL_1MINUTE, start_time, end_time):
                     new_record = Record(new_slice)
-                    new_records.append(new_record)
+
+                    # append the current df, drop duplicates (based on timestamp), sort it (in loop to prevent timeout)
+                    self.add([new_record])
                     print(f"{new_record} added")
                     time.sleep(0.1)
-
-                # append the current df, drop duplicates (based on timestamp), sort it
-                self.add(new_records)
 
             # set the current time to the old variable
             old = timestamp
